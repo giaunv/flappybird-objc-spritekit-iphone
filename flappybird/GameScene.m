@@ -18,6 +18,8 @@
 
 -(id)initWithSize:(CGSize)size{
     if (self = [super initWithSize:size]) {
+        self.physicsWorld.gravity = CGVectorMake(0.0, -5.0);
+        
         _skyColor = [SKColor colorWithRed:113.0/255.0 green:197.0/255.0 blue:207.0/255.0 alpha:1.0];
         [self setBackgroundColor:_skyColor];
         
@@ -33,6 +35,10 @@
         [_bird setScale:2.0];
         _bird.position = CGPointMake(self.frame.size.width/4, CGRectGetMidY(self.frame));
         [_bird runAction:flap];
+        
+        _bird.physicsBody = [SKPhysicsBody bodyWithCircleOfRadius:_bird.size.height/2];
+        _bird.physicsBody.dynamic = YES;
+        _bird.physicsBody.allowsRotation = NO;
         
         [self addChild:_bird];
         
@@ -51,6 +57,13 @@
             [sprite runAction:moveGroundSpriteForever];
             [self addChild:sprite];
         }
+        
+        // Create ground physic container
+        SKNode *dummy = [SKNode node];
+        dummy.position = CGPointMake(0, groundTexture.size.height);
+        dummy.physicsBody = [SKPhysicsBody bodyWithRectangleOfSize:CGSizeMake(self.frame.size.width, groundTexture.size.height*2)];
+        dummy.physicsBody.dynamic = NO;
+        [self addChild:dummy];
         
         // Create skyline
         SKTexture *skylineTexture = [SKTexture textureWithImageNamed:@"Skyline"];
@@ -78,15 +91,24 @@
 
 -(void)touchesBegan:(NSSet *)touches withEvent:(UIEvent *)event {
     /* Called when a touch begins */
-    
-    for (UITouch *touch in touches) {
-        CGPoint location = [touch locationInNode:self];
-        
-    }
+    _bird.physicsBody.velocity = CGVectorMake(0, 0);
+    [_bird.physicsBody applyImpulse:CGVectorMake(0, 8)];
 }
 
 -(void)update:(CFTimeInterval)currentTime {
     /* Called before each frame is rendered */
+    _bird.zRotation = clamp(-1, 0.5, _bird.physicsBody.velocity.dy * (_bird.physicsBody.velocity.dy < 0 ? 0.03 : 0.01));
+    
+}
+
+CGFloat clamp(CGFloat min, CGFloat max, CGFloat value){
+    if (value > max) {
+        return max;
+    } else if (value < min){
+        return min;
+    } else {
+        return value;
+    }
 }
 
 @end
