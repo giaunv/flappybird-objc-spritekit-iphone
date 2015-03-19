@@ -14,6 +14,7 @@
     SKTexture *_pipeTexture1;
     SKTexture *_pipeTexture2;
     SKAction *_moveAndRemovePipes;
+    SKNode *_moving;
 }
 @end
 
@@ -32,6 +33,9 @@ static NSInteger const kVerticalPipeGap = 100;
         
         _skyColor = [SKColor colorWithRed:113.0/255.0 green:197.0/255.0 blue:207.0/255.0 alpha:1.0];
         [self setBackgroundColor:_skyColor];
+        
+        _moving = [SKNode node];
+        [self addChild:_moving];
         
         // Adding bird
         SKTexture *birdTexture1 = [SKTexture textureWithImageNamed:@"Bird1"];
@@ -68,7 +72,8 @@ static NSInteger const kVerticalPipeGap = 100;
             [sprite setScale:2.0];
             sprite.position = CGPointMake(i*sprite.size.width, sprite.size.height/2);
             [sprite runAction:moveGroundSpriteForever];
-            [self addChild:sprite];
+            //[self addChild:sprite];
+            [_moving addChild:sprite];
         }
         
         // Create ground physic container
@@ -93,7 +98,8 @@ static NSInteger const kVerticalPipeGap = 100;
             sprite.zPosition = -20;
             sprite.position = CGPointMake(i*sprite.size.width, sprite.size.height/2 + groundTexture.size.height*2);
             [sprite runAction:moveSkylineSpriteForever];
-            [self addChild:sprite];
+            //[self addChild:sprite];
+            [_moving addChild:sprite];
         }
         
         // Create pipe
@@ -144,26 +150,33 @@ static NSInteger const kVerticalPipeGap = 100;
     [pipePair addChild:pipe2];
     
     [pipePair runAction:_moveAndRemovePipes];
-    [self addChild:pipePair];
+    //[self addChild:pipePair];
+    [_moving addChild:pipePair];
 }
 
 -(void)didMoveToView:(SKView *)view {
 }
 
 -(void)didBeginContact:(SKPhysicsContact *)contact{
-    // Flash background if contact is detected
-    [self removeActionForKey:@"flash"];
-    [self runAction:[SKAction sequence:@[[SKAction repeatAction:[SKAction sequence:@[[SKAction runBlock:^{
-        self.backgroundColor = [SKColor redColor];
-    }], [SKAction waitForDuration:0.05], [SKAction runBlock:^{
-        self.backgroundColor = _skyColor;
-    }], [SKAction waitForDuration:0.05]]]  count:4]]] withKey:@"flash"];
+    if (_moving.speed > 0) {
+        _moving.speed = 0;
+        
+        // Flash background if contact is detected
+        [self removeActionForKey:@"flash"];
+        [self runAction:[SKAction sequence:@[[SKAction repeatAction:[SKAction sequence:@[[SKAction runBlock:^{
+            self.backgroundColor = [SKColor redColor];
+        }], [SKAction waitForDuration:0.05], [SKAction runBlock:^{
+            self.backgroundColor = _skyColor;
+        }], [SKAction waitForDuration:0.05]]]  count:4]]] withKey:@"flash"];
+    }
 }
 
 -(void)touchesBegan:(NSSet *)touches withEvent:(UIEvent *)event {
     /* Called when a touch begins */
-    _bird.physicsBody.velocity = CGVectorMake(0, 0);
-    [_bird.physicsBody applyImpulse:CGVectorMake(0, 8)];
+    if (_moving.speed > 0) {
+        _bird.physicsBody.velocity = CGVectorMake(0, 0);
+        [_bird.physicsBody applyImpulse:CGVectorMake(0, 4)];
+    }
 }
 
 -(void)update:(CFTimeInterval)currentTime {
