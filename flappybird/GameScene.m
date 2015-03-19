@@ -15,6 +15,8 @@
     SKTexture *_pipeTexture2;
     SKAction *_moveAndRemovePipes;
     SKNode *_moving;
+    SKNode *_pipes;
+    BOOL _canRestart;
 }
 @end
 
@@ -28,6 +30,8 @@ static NSInteger const kVerticalPipeGap = 100;
 
 -(id)initWithSize:(CGSize)size{
     if (self = [super initWithSize:size]) {
+        _canRestart = NO;
+        
         self.physicsWorld.gravity = CGVectorMake(0.0, -5.0);
         self.physicsWorld.contactDelegate = self;
         
@@ -36,6 +40,9 @@ static NSInteger const kVerticalPipeGap = 100;
         
         _moving = [SKNode node];
         [self addChild:_moving];
+        
+        _pipes = [SKNode node];
+        [_moving addChild:_pipes];
         
         // Adding bird
         SKTexture *birdTexture1 = [SKTexture textureWithImageNamed:@"Bird1"];
@@ -151,7 +158,22 @@ static NSInteger const kVerticalPipeGap = 100;
     
     [pipePair runAction:_moveAndRemovePipes];
     //[self addChild:pipePair];
-    [_moving addChild:pipePair];
+    [_pipes addChild:pipePair];
+}
+
+-(void)restartScene{
+    // Move bird to original position and reset velocity
+    _bird.position = CGPointMake(self.frame.size.width/4, CGRectGetMidY(self.frame));
+    _bird.physicsBody.velocity = CGVectorMake(0, 0);
+    
+    // Remove all existing pipes
+    [_pipes removeAllChildren];
+    
+    // Reset _canRestart
+    _canRestart = NO;
+    
+    // Restart Animation
+    _moving.speed = 1;
 }
 
 -(void)didMoveToView:(SKView *)view {
@@ -167,7 +189,9 @@ static NSInteger const kVerticalPipeGap = 100;
             self.backgroundColor = [SKColor redColor];
         }], [SKAction waitForDuration:0.05], [SKAction runBlock:^{
             self.backgroundColor = _skyColor;
-        }], [SKAction waitForDuration:0.05]]]  count:4]]] withKey:@"flash"];
+        }], [SKAction waitForDuration:0.05]]]  count:4], [SKAction runBlock:^{
+            _canRestart = YES;
+        }]]] withKey:@"flash"];
     }
 }
 
@@ -176,6 +200,8 @@ static NSInteger const kVerticalPipeGap = 100;
     if (_moving.speed > 0) {
         _bird.physicsBody.velocity = CGVectorMake(0, 0);
         [_bird.physicsBody applyImpulse:CGVectorMake(0, 4)];
+    } else if (_canRestart){
+        [self restartScene];
     }
 }
 
