@@ -16,6 +16,8 @@
 
 @implementation GameScene
 
+static NSInteger const kVerticalPipeGap = 100;
+
 -(id)initWithSize:(CGSize)size{
     if (self = [super initWithSize:size]) {
         self.physicsWorld.gravity = CGVectorMake(0.0, -5.0);
@@ -81,6 +83,37 @@
             [sprite runAction:moveSkylineSpriteForever];
             [self addChild:sprite];
         }
+        
+        // Create pipe
+        SKTexture *pipeTexture1 = [SKTexture textureWithImageNamed:@"Pipe1"];
+        pipeTexture1.filteringMode = SKTextureFilteringNearest;
+        SKTexture *pipeTexture2 = [SKTexture textureWithImageNamed:@"Pipe2"];
+        pipeTexture2.filteringMode = SKTextureFilteringNearest;
+        
+        SKNode *pipePair = [SKNode node];
+        pipePair.position = CGPointMake(self.frame.size.width + pipeTexture1.size.width*2, 0);
+        pipePair.zPosition = -10;
+        
+        CGFloat y = arc4random() % (NSInteger)(self.frame.size.height/3);
+        
+        SKSpriteNode *pipe1 = [SKSpriteNode spriteNodeWithTexture:pipeTexture1];
+        [pipe1 setScale:2];
+        pipe1.position = CGPointMake(0, y);
+        pipe1.physicsBody = [SKPhysicsBody bodyWithRectangleOfSize:pipe1.size];
+        pipe1.physicsBody.dynamic = NO;
+        [pipePair addChild:pipe1];
+        
+        SKSpriteNode *pipe2 = [SKSpriteNode spriteNodeWithTexture:pipeTexture2];
+        [pipe2 setScale:2];
+        pipe2.position = CGPointMake(0, y + pipe1.size.height + kVerticalPipeGap);
+        pipe2.physicsBody = [SKPhysicsBody bodyWithRectangleOfSize:pipe2.size];
+        pipe2.physicsBody.dynamic = NO;
+        [pipePair addChild:pipe2];
+        
+        SKAction *movePipes = [SKAction repeatActionForever:[SKAction moveByX:-1 y:0 duration:0.02]];
+        [pipePair runAction:movePipes];
+        
+        [self addChild:pipePair];
     }
     
     return self;
