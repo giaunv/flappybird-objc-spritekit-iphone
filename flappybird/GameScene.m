@@ -8,7 +8,7 @@
 
 #import "GameScene.h"
 
-@interface GameScene(){
+@interface GameScene() <SKPhysicsContactDelegate> {
     SKSpriteNode * _bird;
     SKColor *_skyColor;
     SKTexture *_pipeTexture1;
@@ -19,11 +19,16 @@
 
 @implementation GameScene
 
+static const uint32_t birdCategory = 1 << 0;
+static const uint32_t worldCategory = 1 << 1;
+static const uint32_t pipeCategory = 1 << 2;
+
 static NSInteger const kVerticalPipeGap = 100;
 
 -(id)initWithSize:(CGSize)size{
     if (self = [super initWithSize:size]) {
         self.physicsWorld.gravity = CGVectorMake(0.0, -5.0);
+        self.physicsWorld.contactDelegate = self;
         
         _skyColor = [SKColor colorWithRed:113.0/255.0 green:197.0/255.0 blue:207.0/255.0 alpha:1.0];
         [self setBackgroundColor:_skyColor];
@@ -44,6 +49,9 @@ static NSInteger const kVerticalPipeGap = 100;
         _bird.physicsBody = [SKPhysicsBody bodyWithCircleOfRadius:_bird.size.height/2];
         _bird.physicsBody.dynamic = YES;
         _bird.physicsBody.allowsRotation = NO;
+        _bird.physicsBody.categoryBitMask = birdCategory;
+        _bird.physicsBody.collisionBitMask = worldCategory | pipeCategory;
+        _bird.physicsBody.contactTestBitMask = worldCategory | pipeCategory;
         
         [self addChild:_bird];
         
@@ -68,6 +76,7 @@ static NSInteger const kVerticalPipeGap = 100;
         dummy.position = CGPointMake(0, groundTexture.size.height);
         dummy.physicsBody = [SKPhysicsBody bodyWithRectangleOfSize:CGSizeMake(self.frame.size.width, groundTexture.size.height*2)];
         dummy.physicsBody.dynamic = NO;
+        dummy.physicsBody.categoryBitMask = worldCategory;
         [self addChild:dummy];
         
         // Create skyline
@@ -121,6 +130,8 @@ static NSInteger const kVerticalPipeGap = 100;
     pipe1.position = CGPointMake(0, y);
     pipe1.physicsBody = [SKPhysicsBody bodyWithRectangleOfSize:pipe1.size];
     pipe1.physicsBody.dynamic = NO;
+    pipe1.physicsBody.categoryBitMask = pipeCategory;
+    pipe1.physicsBody.contactTestBitMask = birdCategory;
     [pipePair addChild:pipe1];
     
     SKSpriteNode *pipe2 = [SKSpriteNode spriteNodeWithTexture:_pipeTexture2];
@@ -128,6 +139,8 @@ static NSInteger const kVerticalPipeGap = 100;
     pipe2.position = CGPointMake(0, y + pipe1.size.height + kVerticalPipeGap);
     pipe2.physicsBody = [SKPhysicsBody bodyWithRectangleOfSize:pipe2.size];
     pipe2.physicsBody.dynamic = NO;
+    pipe2.physicsBody.categoryBitMask = pipeCategory;
+    pipe2.physicsBody.contactTestBitMask = birdCategory;
     [pipePair addChild:pipe2];
     
     [pipePair runAction:_moveAndRemovePipes];
@@ -135,6 +148,16 @@ static NSInteger const kVerticalPipeGap = 100;
 }
 
 -(void)didMoveToView:(SKView *)view {
+}
+
+-(void)didBeginContact:(SKPhysicsContact *)contact{
+    // Flash background if contact is detected
+    [self removeActionForKey:@"flash"];
+    [self runAction:[SKAction sequence:@[[SKAction repeatAction:[SKAction sequence:@[[SKAction runBlock:^{
+        self.backgroundColor = [SKColor redColor];
+    }], [SKAction waitForDuration:0.05], [SKAction runBlock:^{
+        self.backgroundColor = _skyColor;
+    }], [SKAction waitForDuration:0.05]]]  count:4]]] withKey:@"flash"];
 }
 
 -(void)touchesBegan:(NSSet *)touches withEvent:(UIEvent *)event {
