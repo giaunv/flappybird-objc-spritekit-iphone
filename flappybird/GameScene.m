@@ -17,6 +17,8 @@
     SKNode *_moving;
     SKNode *_pipes;
     BOOL _canRestart;
+    SKLabelNode *_scoreLabelNode;
+    NSInteger _score;
 }
 @end
 
@@ -25,6 +27,7 @@
 static const uint32_t birdCategory = 1 << 0;
 static const uint32_t worldCategory = 1 << 1;
 static const uint32_t pipeCategory = 1 << 2;
+static const uint32_t scoreCategory = 1 << 3;
 
 static NSInteger const kVerticalPipeGap = 100;
 
@@ -126,6 +129,14 @@ static NSInteger const kVerticalPipeGap = 100;
         SKAction *spawnThenDelay = [SKAction sequence:@[spawn, delay]];
         SKAction *spawnThenDelayForever = [SKAction repeatActionForever:spawnThenDelay];
         [self runAction:spawnThenDelayForever];
+        
+        // Initialize label and create a label which holds the score
+        _score = 0;
+        _scoreLabelNode = [SKLabelNode labelNodeWithFontNamed:@"MarkerFelt-Wide"];
+        _scoreLabelNode.position = CGPointMake(CGRectGetMidX(self.frame), 3 * self.frame.size.height/4);
+        _scoreLabelNode.zPosition = 100;
+        _scoreLabelNode.text = [NSString stringWithFormat:@"%d", _score];
+        [self addChild:_scoreLabelNode];
     }
     
     return self;
@@ -156,6 +167,14 @@ static NSInteger const kVerticalPipeGap = 100;
     pipe2.physicsBody.contactTestBitMask = birdCategory;
     [pipePair addChild:pipe2];
     
+    SKNode *contactNode = [SKNode node];
+    contactNode.position = CGPointMake(pipe1.size.width + _bird.size.width/2, CGRectGetMidY(self.frame));
+    contactNode.physicsBody = [SKPhysicsBody bodyWithRectangleOfSize:CGSizeMake(pipe2.size.width, self.frame.size.height)];
+    contactNode.physicsBody.dynamic = NO;
+    contactNode.physicsBody.categoryBitMask = scoreCategory;
+    contactNode.physicsBody.contactTestBitMask = birdCategory;
+    [pipePair addChild:contactNode];
+    
     [pipePair runAction:_moveAndRemovePipes];
     //[self addChild:pipePair];
     [_pipes addChild:pipePair];
@@ -177,6 +196,10 @@ static NSInteger const kVerticalPipeGap = 100;
     
     // Restart Animation
     _moving.speed = 1;
+    
+    // Reset score
+    _score = 0;
+    _scoreLabelNode.text = [NSString stringWithFormat:@"%d", _score];
 }
 
 -(void)didMoveToView:(SKView *)view {
@@ -184,22 +207,32 @@ static NSInteger const kVerticalPipeGap = 100;
 
 -(void)didBeginContact:(SKPhysicsContact *)contact{
     if (_moving.speed > 0) {
-        _moving.speed = 0;
-        
-        _bird.physicsBody.collisionBitMask = worldCategory;
-        [_bird runAction:[SKAction rotateByAngle:M_PI * _bird.position.y * 0.01 duration:_bird.position.y * 0.03] completion:^{
-            _bird.speed = 0;
-        }];
-        
-        // Flash background if contact is detected
-        [self removeActionForKey:@"flash"];
-        [self runAction:[SKAction sequence:@[[SKAction repeatAction:[SKAction sequence:@[[SKAction runBlock:^{
-            self.backgroundColor = [SKColor redColor];
-        }], [SKAction waitForDuration:0.05], [SKAction runBlock:^{
-            self.backgroundColor = _skyColor;
-        }], [SKAction waitForDuration:0.05]]]  count:4], [SKAction runBlock:^{
-            _canRestart = YES;
-        }]]] withKey:@"flash"];
+        if ((contact.bodyA.categoryBitMask & scoreCategory) == scoreCategory || (contact.bodyB.categoryBitMask & scoreCategory) == scoreCategory) {
+            // Bird has contact with score entity
+            _score++;
+            _scoreLabelNode.text = [NSString stringWithFormat:@"%d", _score];
+            
+            // Add a little feedback for the score increment
+            [_scoreLabelNode runAction:[SKAction sequence:@[[SKAction scaleTo:1.5 duration:0.1], [SKAction scaleTo:1.0 duration:0.1]]]];
+        } else{
+            // Bird has collided with the world
+            _moving.speed = 0;
+            
+            _bird.physicsBody.collisionBitMask = worldCategory;
+            [_bird runAction:[SKAction rotateByAngle:M_PI * _bird.position.y * 0.01 duration:_bird.position.y * 0.03] completion:^{
+                _bird.speed = 0;
+            }];
+            
+            // Flash background if contact is detected
+            [self removeActionForKey:@"flash"];
+            [self runAction:[SKAction sequence:@[[SKAction repeatAction:[SKAction sequence:@[[SKAction runBlock:^{
+                self.backgroundColor = [SKColor redColor];
+            }], [SKAction waitForDuration:0.05], [SKAction runBlock:^{
+                self.backgroundColor = _skyColor;
+            }], [SKAction waitForDuration:0.05]]]  count:4], [SKAction runBlock:^{
+                _canRestart = YES;
+            }]]] withKey:@"flash"];
+        }
     }
 }
 
