@@ -165,6 +165,9 @@ static NSInteger const kVerticalPipeGap = 100;
     // Move bird to original position and reset velocity
     _bird.position = CGPointMake(self.frame.size.width/4, CGRectGetMidY(self.frame));
     _bird.physicsBody.velocity = CGVectorMake(0, 0);
+    _bird.physicsBody.collisionBitMask = worldCategory | pipeCategory;
+    _bird.speed = 1.0;
+    _bird.zRotation = 0.0;
     
     // Remove all existing pipes
     [_pipes removeAllChildren];
@@ -182,6 +185,11 @@ static NSInteger const kVerticalPipeGap = 100;
 -(void)didBeginContact:(SKPhysicsContact *)contact{
     if (_moving.speed > 0) {
         _moving.speed = 0;
+        
+        _bird.physicsBody.collisionBitMask = worldCategory;
+        [_bird runAction:[SKAction rotateByAngle:M_PI * _bird.position.y * 0.01 duration:_bird.position.y * 0.03] completion:^{
+            _bird.speed = 0;
+        }];
         
         // Flash background if contact is detected
         [self removeActionForKey:@"flash"];
@@ -207,8 +215,9 @@ static NSInteger const kVerticalPipeGap = 100;
 
 -(void)update:(CFTimeInterval)currentTime {
     /* Called before each frame is rendered */
-    _bird.zRotation = clamp(-1, 0.5, _bird.physicsBody.velocity.dy * (_bird.physicsBody.velocity.dy < 0 ? 0.03 : 0.01));
-    
+    if (_moving.speed > 0) {
+        _bird.zRotation = clamp(-1, 0.5, _bird.physicsBody.velocity.dy * (_bird.physicsBody.velocity.dy < 0 ? 0.03 : 0.01));
+    }
 }
 
 CGFloat clamp(CGFloat min, CGFloat max, CGFloat value){
